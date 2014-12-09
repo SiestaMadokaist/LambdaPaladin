@@ -4,6 +4,7 @@ import AdaBoostClassifier as Ada
 import Helper as helper
 from PIL import Image
 import sys
+import numpy as np
 @classmethod
 def loadClassifiers(cls, filepath):
     def loader():
@@ -55,13 +56,36 @@ def eyeFinder(classifiers, image):
         if test:                    
             x, y, w, h = area            
             x1, y1 = x + w, y + h             
-            yield area            
+            yield x, y, x1, y1
 
+def maskWrite(regions, origin, masktarget):
+    def decision(x, y):
+        def lambd(args):   
+            x0, y0, x1, y1 = args
+            return x0 <= x <= x1 and y0 <= y <= y1
+        return lambd
+    data = origin.load()
+    w, h = origin.size
+    for region in regions:
+        x0, y0, x1, y1 = region
+        for x in xrange(x0, x1):
+            data[x, y0] = 255
+            data[x, y1] = 255
+        for y in xrange(y0, y1):
+            data[x0, y] = 255
+            data[x1, y] = 255
+
+    # for y in xrange(h):
+    #     for x in xrange(w):
+    #         if not helper.any(decision(x, y), regions, 1):                
+    #             data[x, y] = 255
 def main():    
     classifiers = [classifier for classifier in classifierLoader()]    
     for num, image in enumerate(imagesLoader()):        
-        for eyeArea in eyeFinder(classifiers, image):
-            print num, eyeArea
-            
+        immask = [[0 for __ in xrange(image.size[0])] for _ in xrange(image.size[1])]
+        candidates = [eyeArea for eyeArea in eyeFinder(classifiers, image)]
+        maskWrite(candidates, origin=image, masktarget=immask) 
+        image.save('../out/%s.jpg' % num)
+
 if __name__ == '__main__':
     main()

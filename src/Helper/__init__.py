@@ -11,15 +11,25 @@ def map(func, iterable):
     for i in iterable:
         yield func(i)
 
+def any(func, iterable, tolerance=1):
+    for item in iterable:
+        r = func(item)        
+        if r:            
+            tolerance -= 1
+        if not tolerance:
+            return True        
+    return False
+
 def all(func, iterable, tolerance=1):    
     for item in iterable:
-        if not func(item):
+        r = func(item)        
+        if not r:
             tolerance -= 1            
         if not tolerance:
             return False
     return True
 
-def all2(fiterable):
+def all2(fiterable, tolerance=1):
     for f, item in fiterable:
         print f(item)
         if not f(item):
