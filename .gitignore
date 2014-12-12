@@ -1,3 +1,4 @@
 src/.geteye.py
 src/*.pyc
 dataset/jaffe/**
+out/

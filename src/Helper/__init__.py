@@ -1,3 +1,4 @@
+from PIL import Image
 def unpackJS(j, keys):
     return [j[key] for key in keys]
 
@@ -13,16 +14,19 @@ def map(func, iterable):
 
 def any(func, iterable, tolerance=1):
     for item in iterable:
-        r = func(item)        
+        r = func(*item)        
         if r:            
             tolerance -= 1
         if not tolerance:
             return True        
     return False
 
-def all(func, iterable, tolerance=1):    
+def all(func, iterable, tolerance=1):        
     for item in iterable:
-        r = func(item)        
+        if isinstance(item, (tuple, list)):
+            r = func(*item)
+        else:
+            r = func(item)        
         if not r:
             tolerance -= 1            
         if not tolerance:
@@ -30,8 +34,20 @@ def all(func, iterable, tolerance=1):
     return True
 
 def all2(fiterable, tolerance=1):
-    for f, item in fiterable:
-        print f(item)
-        if not f(item):
+    for f, item in fiterable:        
+        if not f(*item):
             return False 
     return True
+
+def group(items, n):
+    l = (len(items) / n)  * n
+    for i in xrange(0, l, n):
+        yield items[i:i+n]
+
+def arr2image(arr, size, fout):
+    im = Image.new("L", size)
+    iml = im.load()
+    for y, line in enumerate(arr):
+        for x, val in enumerate(line):            
+            iml[x, y] = val
+    im.save(fout)

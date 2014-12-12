@@ -89,21 +89,27 @@ class AdaBoost(object):
 
 def levelGenerator(n):            
     for i in xrange(1, n):
-        lim = int(1.5 * math.log(i))        
-        for __ in xrange(6 - lim):
-            yield int(i ** 2.12)
-def main():
-    levels =  [_ for _ in levelGenerator(26)]    
-    # levels = [10, 10, 20, 20, 20, 20, 20, 30, 30, 35, 35, 35, 35, 50, 100, 100, 100, 200, 200, 200, 250, 500, 1000, 1000, 2000]    
-    # levels = [10, 10, 10, 20]
-    # dataSet = [(x, l) for x, l in AdaBoost.loadSamples('../.tmp/true-eye', '../.tmp/false-eye')]
+        lim = int(1.5 * i)
+        repeat = 6 - math.log(lim)
+        for e in xrange(int(repeat)):
+            yield int(2.12 ** lim) * 12
+
+def expand(iterablepairs):
+    for x, rep in iterablepairs:
+        for _ in xrange(rep):
+            yield x
+
+def main():    
+    zexpand = [(10, 5), (20, 7), (30, 13), (35, 10), (50, 5), (100, 2), (200, 2), (250, 2), (350, 1), (500, 1), (1000, 1), (2000, 1)]
+    levels = [e for e in expand(zexpand)]    
+    # levels = [10, 10, 20, 20, 20, 20, 20, 30, 30, 35, 35, 35, 35, 50, 100, 100, 100, 200, 200, 200, 250, 500, 1000, 1000, 2000]        
     dataSet = [(x, l) for x, l in AdaBoost.loadSamples('../../.tmp/true-eye', '../../.tmp/false-eye')]    
     random.shuffle(dataSet)        
     for i, level in enumerate(levels):
         print level
         classifiers = AdaBoost.new(dataSet, 50, level)              
         print classifiers.confusion        
-        classifiers.save("../../classifiers/eye-%s" % i)
+        classifiers.save("../../classifiers/eye-%2i" % i)
 
 def run():    
     levels = [10, 10, 20, 20, 20, 20, 20, 30, 30, 35, 35, 35, 35, 50, 100, 100, 100, 200, 200, 200, 250, 500, 1000]    
