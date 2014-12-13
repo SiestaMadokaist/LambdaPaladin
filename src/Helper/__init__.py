@@ -40,6 +40,7 @@ def all2(fiterable, tolerance=1):
     return True
 
 def group(items, n):
+    items = [_ for _ in items]    
     l = (len(items) / n)  * n
     for i in xrange(0, l, n):
         yield items[i:i+n]
@@ -51,3 +52,4 @@ def arr2image(arr, size, fout):
         for x, val in enumerate(line):            
             iml[x, y] = val
     im.save(fout)
+

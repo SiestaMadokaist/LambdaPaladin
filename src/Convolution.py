@@ -25,16 +25,16 @@ def areaGenerator(image, size=(3, 3)):
 def monadError(func, default):
     def monadic(*args):
         try:
-            r = func(*args)            
+            r = func(*args)                        
         except:
             return default        
-        else:            
+        else:         
             return r
     return monadic
 
 def maskKernel(kernel):    
-    def aply(values):        
-        return sum(m * v for m, v in zip(kernel, values))
+    def aply(values):
+        return sum(m * v for m, v in zip(kernel, values))        
     return aply
 
 def convolute(image, mask, size):        
@@ -44,3 +44,49 @@ def convolute(image, mask, size):
         if r < -255: yield -255
         elif r > 255: yield 255
         else: yield r
+
+class LDP(object):
+    @classmethod
+    def Directions(cls, i):
+        idx = i % 8
+        return [5, 8, 7, 6, 3, 0, 1, 2][idx]
+
+    @classmethod
+    def KirschGenerator(cls, direction):
+        fives = map(LDP.Directions, xrange(direction-1, direction+2))        
+        for y in xrange(3):
+            for x in xrange(3):
+                if x == y == 1:
+                    yield 0
+                else:
+                    yield 5 if y * 3 + x in fives else -3
+
+    @classmethod
+    def Kirschedge(cls, direction):        
+        if direction != all:
+            return LDP.KirschGenerator(direction)
+        else:
+            return map(LDP.KirschGenerator, xrange(8))
+
+    @classmethod    
+    def Mask(cls, direction=all):
+        if direction != all:
+            kernel = [_ for _ in LDP.Kirschedge(direction)]
+            return maskKernel(kernel)
+        else:                        
+            kernels = [maskKernel([e for e in m]) for m in LDP.Kirschedge(all)]
+            def aply(area):
+                memo = [e for e in area]
+                result = [kernel(memo) for kernel in kernels]                
+                sortedOut = sorted(enumerate(result), key=lambda x: x[1], reverse=True)                
+                xs = (k for k, v in sortedOut[:3])
+                return sum(2 ** x for x in xs)
+            return aply
+
+# if __name__ == '__main__':
+#     image = Image.open('face.jpg')    
+#     tests = [[_ for _ in m] for m in LDP.Kirschedge(all)]    
+#     mask = LDP.Mask(all)    
+#     test = convolute(image, mask, (3, 3))
+#     field = [_ for _ in helper.group(test, 256)]    
+#     helper.arr2image(field, (256, 256), 'fc.jpg')
