@@ -1,3 +1,4 @@
+import math
 import numpy as np
 from PIL import Image
 import sys
@@ -41,9 +42,10 @@ def convolute(image, mask, size):
     monadMask = monadError(mask, 255)
     for area in areaGenerator(image, size):        
         r = monadMask(area)
-        if r < -255: yield -255
-        elif r > 255: yield 255
-        else: yield r
+        yield r        
+        # if r < -255: yield -255
+        # elif r > 255: yield 255
+        # else: yield r
 
 class LDP(object):
     @classmethod
@@ -77,16 +79,17 @@ class LDP(object):
             kernels = [maskKernel([e for e in m]) for m in LDP.Kirschedge(all)]
             def aply(area):
                 memo = [e for e in area]
-                result = [kernel(memo) for kernel in kernels]                
-                sortedOut = sorted(enumerate(result), key=lambda x: x[1], reverse=True)                
-                xs = (k for k, v in sortedOut[:3])
-                return sum(2 ** x for x in xs)
+                result = [kernel(memo) for kernel in kernels]                                
+                sortedOut = sorted(enumerate(result), key=lambda x: x[1], reverse=True)
+                xs = (k for k, v in sortedOut[:3])                
+                return sum(2 ** x for x in xs) / 2
             return aply
 
+    
 # if __name__ == '__main__':
-#     image = Image.open('face.jpg')    
+#     image = Image.open('paav.jpg')    
 #     tests = [[_ for _ in m] for m in LDP.Kirschedge(all)]    
-#     mask = LDP.Mask(all)    
+#     mask = LDP.Mask(all)        
 #     test = convolute(image, mask, (3, 3))
-#     field = [_ for _ in helper.group(test, 256)]    
-#     helper.arr2image(field, (256, 256), 'fc.jpg')
+#     field = [_ for _ in helper.group(test, 199)]
+#     helper.arr2dimage(field,'fc.jpg')

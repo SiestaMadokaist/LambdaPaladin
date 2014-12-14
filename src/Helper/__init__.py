@@ -1,4 +1,12 @@
 from PIL import Image
+def deprecated(message):
+    def decorator(func):        
+        def aply(*args):
+            print message            
+            return func(*args)
+        return aply
+    return decorator
+
 def unpackJS(j, keys):
     return [j[key] for key in keys]
 
@@ -45,6 +53,7 @@ def group(items, n):
     for i in xrange(0, l, n):
         yield items[i:i+n]
 
+@deprecated("arr2image is deprecated, please use arr2dimage")
 def arr2image(arr, size, fout):
     im = Image.new("L", size)
     iml = im.load()
@@ -53,3 +62,11 @@ def arr2image(arr, size, fout):
             iml[x, y] = val
     im.save(fout)
 
+def arr2dimage(arr, fout):
+    size = (len(arr[0]), len(arr))
+    im = Image.new("L", size)
+    iml = im.load()
+    for y, line in enumerate(arr):
+        for x, val in enumerate(line):            
+            iml[x, y] = val
+    im.save(fout)

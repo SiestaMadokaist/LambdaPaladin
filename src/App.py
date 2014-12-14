@@ -2,12 +2,14 @@ import os
 import json
 import AdaBoostClassifier as Ada
 import Helper as helper
-from PIL import Image
 import sys
 import numpy as np
 import CornerDetection as cd
 import time
 import math
+import Convolution
+from PIL import Image
+from datetime import datetime
 @classmethod
 def loadClassifiers(cls, filepath):
     def loader():
@@ -25,6 +27,16 @@ def loadClassifiers(cls, filepath):
 
 Ada.AdaBoost.loadClassifiers = loadClassifiers
 
+def ImageOpenDecorator(func):
+    def aply(fname, mode='r'):        
+        output = func(fname)        
+        output.name = fname.split("/")[-1]
+        output.path = fname
+        return output
+    return aply
+
+Image.open = ImageOpenDecorator(Image.open)
+
 def classifierLoader(classifierDirectory='../classifiers'):    
     for fi in os.listdir(classifierDirectory):
         if not fi.startswith("eye"):
@@ -36,7 +48,7 @@ def classifierLoader(classifierDirectory='../classifiers'):
 def imagesLoader(imagesDirectory='../dataset/jaffe'):
     for fi in os.listdir(imagesDirectory):
         path = "%s/%s" % (imagesDirectory, fi)
-        image = Image.open(path)
+        image = Image.open(path)        
         yield image
 
 def ranges(size, space):
@@ -94,14 +106,16 @@ def orderOfLog10(func):
 def main(): 
     def ftrs(args):
         x, y, reg = args        
-        return nbx(x) > -3 and nby(y) > -3        
-        
+        return nbx(x) > -3 and nby(y) > -3
+
     avg = [374.88853020859023, 1014.8650253216985]
     std = [56.422630355577567, 61.952098016350945]        
     nbs = map(naiveBayes, avg, std)
     nbx, nby = nbs
-    classifiers = [classifier for classifier in classifierLoader()]        
-    for num, image in enumerate(imagesLoader()):        
+    classifiers = [classifier for classifier in classifierLoader()]
+
+    for image in imagesLoader():
+        foutpath = "out/%s" % image.name       
         regionCandidates = [region for region in eyeFinder(classifiers, image)]        
         crops = [image.crop(region) for region in regionCandidates]
         eigs = map(cd.detect, crops)                
@@ -110,8 +124,11 @@ def main():
         if not filtered: continue
         bounds = zip(*filtered)        
         boxLimit = [f(*args) if len(args) > 1 else args[0] for f, args in zip((min, min, max, max), bounds)]                
-        hello = image.crop(boxLimit)
-        hello.save('fc.jpg')
+        eyeRegion = image.crop(boxLimit)        
+        ldpMask = Convolution.LDP.Mask(all)        
+        ldpResult = Convolution.convolute(eyeRegion, ldpMask, (3, 3))
+        print [e for e in ldpResult]
+        exit()
 
 if __name__ == '__main__':
-    main()     
+    main()
