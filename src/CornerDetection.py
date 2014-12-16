@@ -6,7 +6,7 @@ import numpy as np
 def eigen(image, debug=False):
     return detect(image, debug=debug)
 
-def detect(image, threshold=100, debug=False):
+def detect(image, threshold=100, debug=False):    
     def applyMask(kernel):        
         mask = Convolution.maskKernel(kernel)        
         return Convolution.convolute(image, mask, (3, 3))
@@ -18,10 +18,10 @@ def detect(image, threshold=100, debug=False):
         return int(f * 100) + 100
 
     def showDerivationCovariant(Ix, Iy, size):    
-        fields = [[0 for i in xrange(size)] for j in xrange(size)]
+        fields = [[0 for i in xrange(size)] for j in xrange(size)]        
         for x, y in zip(Ix, Iy):        
             fields[view(y)][view(x)] = 255        
-        helper.arr2image(fields, (size, size), "hello.jpg")
+        helper.arr2dimage(fields, "img/hello.jpg")
 
     
     kernelX = [(i % 3) - 1 for i in xrange(9)]    

@@ -70,3 +70,15 @@ def arr2dimage(arr, fout):
         for x, val in enumerate(line):            
             iml[x, y] = val
     im.save(fout)
+
+def generator1dimage(gen, size, fout):    
+    w, h = size        
+    image = Image.new("L", size)
+    im = image.load()
+    for y in xrange(h):
+        for x in xrange(w):
+            try:
+                im[x, y] = gen.next()
+            except:
+                break
+    image.save(fout)

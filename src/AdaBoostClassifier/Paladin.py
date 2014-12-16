@@ -1,6 +1,6 @@
 class Paladin(object):    
     @classmethod
-    def group(self, items, n):
+    def group(cls, items, n):
         l = (len(items) / n)  * n
         for i in xrange(0, l, n):
             yield items[i:i+n]        

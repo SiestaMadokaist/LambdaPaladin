@@ -41,11 +41,10 @@ def maskKernel(kernel):
 def convolute(image, mask, size):        
     monadMask = monadError(mask, 255)
     for area in areaGenerator(image, size):        
-        r = monadMask(area)
-        yield r        
-        # if r < -255: yield -255
-        # elif r > 255: yield 255
-        # else: yield r
+        r = monadMask(area)        
+        if r < -255: yield -255
+        elif r > 255: yield 255
+        else: yield r
 
 class LDP(object):
     @classmethod
@@ -81,8 +80,9 @@ class LDP(object):
                 memo = [e for e in area]
                 result = [kernel(memo) for kernel in kernels]                                
                 sortedOut = sorted(enumerate(result), key=lambda x: x[1], reverse=True)
-                xs = (k for k, v in sortedOut[:3])                
-                return sum(2 ** x for x in xs) / 2
+                return max(result) / 4
+                # xs = (k for k, v in sortedOut[:3])                
+                # return sum(2 ** x for x in xs) / 2
             return aply
 
     

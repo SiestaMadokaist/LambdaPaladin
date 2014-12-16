@@ -16,7 +16,7 @@
 </style>
 <body>
     <div id="image" style="float:left">
-        <img src="/chess" alt="" onContextMenu="return false">        
+        <img src="/face" alt="" onContextMenu="return false">        
     </div> 
     <div style="float:left">
         <div><input placeholder="x0 = " type="text" id="x0"></div>
@@ -51,7 +51,7 @@
         }
         function onRightClick(e){
             setIdValue("x1", e.clientX)
-            setIdValue("y1", e.clientX)                            
+            setIdValue("y1", e.clientY)                            
             refreshImage()
         }
         var im = document.getElementById("image")

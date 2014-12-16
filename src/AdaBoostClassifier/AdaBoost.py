@@ -1,5 +1,3 @@
-# Adaboost implementation taken from https://gist.github.com/tristanwietsma/5486024 with a few change.
-
 from __future__ import division
 from Paladin import Paladin
 import numpy as np
@@ -11,6 +9,9 @@ def getSeeds(n):
     return [random.randint(-10, 10) for _ in xrange(n)]
 
 class AdaBoost(object):
+    """
+    Adaboost implementation taken from https://gist.github.com/tristanwietsma/5486024 with a few change.
+    """
     @classmethod            
     def loadSamples(cls, valid, invalid):
         for line in open(valid, 'rb'):
@@ -61,8 +62,8 @@ class AdaBoost(object):
 
     def add_paladin(self, paladin):
         errors = np.array([expectation != paladin.rule(*args) for args, expectation in self.trainingSet])
-        e = (self.weights * errors).sum()
-        alpha = 0.5 * np.log((1 - e) / e)
+        et = (self.weights * errors).sum()
+        alpha = 0.5 * np.log((1 - et) / et)
         w = np.array([weight for weight in self.updated_weights(errors, self.weights, alpha)])
         self.weights = w / w.sum()        
         self.alphas.append(alpha)
@@ -124,4 +125,4 @@ def run():
 
 
 if __name__ == '__main__':
-    main()
+    main()    

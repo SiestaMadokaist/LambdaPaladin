@@ -65,7 +65,7 @@ def eyeFinder(classifiers, image):
     identified = []
     tot = 0
     xx = 0
-    for area in ranges(image.size, (106, 48)):                
+    for area in ranges(image.size, (100, 48)):                
         args = sumTable.haar(*area)                
         test = helper.all(lambda c: c.apply(*args) > 0, classifiers, 3)
         if test:                    
@@ -126,9 +126,11 @@ def main():
         boxLimit = [f(*args) if len(args) > 1 else args[0] for f, args in zip((min, min, max, max), bounds)]                
         eyeRegion = image.crop(boxLimit)        
         ldpMask = Convolution.LDP.Mask(all)        
-        ldpResult = Convolution.convolute(eyeRegion, ldpMask, (3, 3))
-        print [e for e in ldpResult]
-        exit()
+        ldpResult = Convolution.convolute(eyeRegion, ldpMask, (3, 3))        
+        helper.generator1dimage(ldpResult, eyeRegion.size, foutpath)
+        # exit()
+        # print [e for e in ldpResult]
+        # exit()
 
 if __name__ == '__main__':
     main()
