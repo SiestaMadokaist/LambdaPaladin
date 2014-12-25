@@ -79,10 +79,9 @@ class LDP(object):
             def aply(area):
                 memo = [e for e in area]
                 result = [kernel(memo) for kernel in kernels]                                
-                sortedOut = sorted(enumerate(result), key=lambda x: x[1], reverse=True)
-                return max(result) / 4
-                # xs = (k for k, v in sortedOut[:3])                
-                # return sum(2 ** x for x in xs) / 2
+                sortedOut = sorted(enumerate(result), key=lambda x: x[1], reverse=True)                
+                xs = (k for k, v in sortedOut[:3])
+                return sum(2 ** x for x in xs) / 2
             return aply
 
     

@@ -54,8 +54,8 @@ def imagesLoader(imagesDirectory='../dataset/jaffe'):
 def ranges(size, space):
     xlim, ylim = size
     width, height = space
-    for y in xrange(0, ylim - height, 6):
-        for x in xrange(0, xlim - width, 6):
+    for y in xrange(0, ylim - height, 10):
+        for x in xrange(0, xlim - width, 10):
             yield [x, y, width, height]
 
 def eyeFinder(classifiers, image):
@@ -67,7 +67,7 @@ def eyeFinder(classifiers, image):
     xx = 0
     for area in ranges(image.size, (100, 48)):                
         args = sumTable.haar(*area)                
-        test = helper.all(lambda c: c.apply(*args) > 0, classifiers, 3)
+        test = helper.all(lambda c: c.apply(*args) > 0, classifiers, 2)
         if test:                    
             x, y, w, h = area            
             x1, y1 = x + w, y + h             
@@ -103,34 +103,49 @@ def naiveBayes(avg, stddev):
 def orderOfLog10(func):
     return lambda *args: math.log(func(*args), 10)
 
-def main(): 
+def process(image, classifiers, nbx, nby):
     def ftrs(args):
         x, y, reg = args        
-        return nbx(x) > -3 and nby(y) > -3
+        nx = nbx(x) 
+        ny = nby(y) 
+        return (nx > -3) and (ny > -3) and (nx + ny > -5)    
+    regionCandidates = [region for region in eyeFinder(classifiers, image)]            
+    crops = [image.crop(region) for region in regionCandidates]        
+    eigs = map(cd.detect, crops)                
+    xs, ys = zip(*eigs)
+    filtered = [region for x, y, region in filter(ftrs, zip(xs, ys, regionCandidates))][:4]
+    if not filtered: return None
+    bounds = zip(*filtered)        
+    boxLimit = [f(*args) if len(args) > 1 else args[0] for f, args in zip((min, min, max, max), bounds)]                
+    eyeRegion = image.crop(boxLimit)
+    eyeRegion.name = image.name
+    return eyeRegion    
 
+def main(): 
     avg = [374.88853020859023, 1014.8650253216985]
     std = [56.422630355577567, 61.952098016350945]        
     nbs = map(naiveBayes, avg, std)
     nbx, nby = nbs
-    classifiers = [classifier for classifier in classifierLoader()]
-
-    for image in imagesLoader():
+    classifiers = [classifier for classifier in classifierLoader()]    
+    ldpMask = Convolution.LDP.Mask(all)        
+    for image in imagesLoader(): 
         foutpath = "out/%s" % image.name       
-        regionCandidates = [region for region in eyeFinder(classifiers, image)]        
-        crops = [image.crop(region) for region in regionCandidates]
-        eigs = map(cd.detect, crops)                
-        xs, ys = zip(*eigs)
-        filtered = [region for x, y, region in filter(ftrs, zip(xs, ys, regionCandidates))][:4]        
-        if not filtered: continue
-        bounds = zip(*filtered)        
-        boxLimit = [f(*args) if len(args) > 1 else args[0] for f, args in zip((min, min, max, max), bounds)]                
-        eyeRegion = image.crop(boxLimit)        
-        ldpMask = Convolution.LDP.Mask(all)        
+        eyeRegion = process(image, classifiers, nbx, nby)
+        if not eyeRegion: continue        
+        if len(list(eyeRegion.getdata())) > 8000: 
+            eyeRegion = process(eyeRegion, classifiers, nbx, nby)
+            if not eyeRegion: continue
         ldpResult = Convolution.convolute(eyeRegion, ldpMask, (3, 3))        
-        helper.generator1dimage(ldpResult, eyeRegion.size, foutpath)
-        # exit()
-        # print [e for e in ldpResult]
-        # exit()
+        eyeRegion.putdata(list(ldpResult))
+        eyeRegion.save(foutpath)
 
+def test():
+    src = "/home/ramadokayano/Development/Python/TA.prototype/dataset/jaffe/KA.AN1.39.jpg"
+    image = Image.open(src)
+    ldpMask = Convolution.LDP.Mask(all)
+    ldpResult = Convolution.convolute(image, ldpMask, (3, 3))
+    image.putdata(list(ldpResult))
+    image.save('test.jpg')
 if __name__ == '__main__':
-    main()
+    test()
+    # main()    
