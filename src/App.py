@@ -1,5 +1,6 @@
+
 import os
-import json
+import ujson as json
 import AdaBoostClassifier as Ada
 import Helper as helper
 import sys
@@ -45,8 +46,8 @@ def classifierLoader(classifierDirectory='../classifiers'):
         classifiers = Ada.AdaBoost.loadClassifiers(path)
         yield classifiers
 
-def imagesLoader(imagesDirectory='../dataset/jaffe'):
-    for fi in os.listdir(imagesDirectory):
+def imagesLoader(imagesDirectory='../dataset/jaffe', filters=lambda fpath: True):
+    for fi in filter(filters, os.listdir(imagesDirectory)):
         path = "%s/%s" % (imagesDirectory, fi)
         image = Image.open(path)        
         yield image
@@ -121,7 +122,72 @@ def process(image, classifiers, nbx, nby):
     eyeRegion.name = image.name
     return eyeRegion    
 
-def main(): 
+class NNInput(object):        
+    Keys = [3, 5, 6, 7, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 21, 22, 24, 25, 26, 28, 33, 34, 35, 36, 37, 38, 40, 41, 42, 44, 48, 49, 50, 52, 56, 65, 66, 67, 68, 69, 70, 72, 73, 74, 76, 80, 81, 82, 84, 88, 96, 97, 98, 100, 104, 112, 255]
+    Transformer = [None] * 256
+    for i, key in enumerate(Keys):
+        Transformer[key] = i
+
+    @classmethod
+    def search(cls, key):
+        return NNInput.Transformer[key]
+
+    def __init__(self, clas):
+        self.memo = [0] * len(NNInput.Keys)
+        self.clas = clas
+
+    @property
+    def normalized(self):
+        total = sum(self.memo)
+        return [val / float(total) for val in self.memo]
+
+    def incrementAt(self, key):
+        index = NNInput.search(key)
+        self.memo[index] += 1
+
+    def setValueAt(self, key, value):
+        index = NNInput.search(key)
+        self.memo[index] = value   
+
+    def __repr__(self):
+        return "%s | %s" % (self.clas, self.memo)
+        # return json.dumps(
+        #     {
+        #     'class': self.clas,
+        #     'values': self.memo
+        #     }            
+        # )        
+
+def getNNI(array, size, cls):    
+    w, h = size
+    im = Image.new("L", (w, h))
+    x1 = (w / 2)    
+    im.putdata(array)    
+    im1 = im.crop((0, 0, x1, h))
+    im2 = im.crop((x1, 0, w, h))    
+    hist1 = im1.histogram()    
+    hist2 = im2.histogram()
+    nni1 = NNInput(cls)
+    nni2 = NNInput(cls)
+    for i, k in enumerate(hist1):        
+        if k != 0: 
+            nni1.setValueAt(i, k)    
+    for i, k in enumerate(hist2):
+        if k != 0:
+            nni2.setValueAt(i, k)
+    nni = NNInput(cls)
+    nni.memo = nni1.memo[:-1] + nni2.memo[:-1]    
+    return nni
+
+def eyeRegionFinder(image, classifiers, nbx, nby):
+    eyeRegion = process(image, classifiers, nbx, nby)    
+    if not eyeRegion: return None    
+    if len(list(eyeRegion.getdata())) > 8000: 
+        eyeRegion = process(eyeRegion, classifiers, nbx, nby)
+        if not eyeRegion: return None
+    return eyeRegion
+
+def NNInputGenerator(): 
     avg = [374.88853020859023, 1014.8650253216985]
     std = [56.422630355577567, 61.952098016350945]        
     nbs = map(naiveBayes, avg, std)
@@ -129,23 +195,38 @@ def main():
     classifiers = [classifier for classifier in classifierLoader()]    
     ldpMask = Convolution.LDP.Mask(all)        
     for image in imagesLoader(): 
-        foutpath = "out/%s" % image.name       
-        eyeRegion = process(image, classifiers, nbx, nby)
+        foutpath = "out/%s" % image.name
+        cls = image.name.split(".")[1][:2]        
+        eyeRegion = eyeRegionFinder(image, classifiers, nbx, nby)        
         if not eyeRegion: continue        
-        if len(list(eyeRegion.getdata())) > 8000: 
-            eyeRegion = process(eyeRegion, classifiers, nbx, nby)
-            if not eyeRegion: continue
-        ldpResult = Convolution.convolute(eyeRegion, ldpMask, (3, 3))        
-        eyeRegion.putdata(list(ldpResult))
-        eyeRegion.save(foutpath)
+        ldpResult = list(Convolution.convolute(eyeRegion, ldpMask, (3, 3)))
+        nni = getNNI(ldpResult, eyeRegion.size, cls)
+        yield nni
 
-def test():
-    src = "/home/ramadokayano/Development/Python/TA.prototype/dataset/jaffe/KA.AN1.39.jpg"
-    image = Image.open(src)
-    ldpMask = Convolution.LDP.Mask(all)
-    ldpResult = Convolution.convolute(image, ldpMask, (3, 3))
-    image.putdata(list(ldpResult))
-    image.save('test.jpg')
+def split(image):
+    W, H = image.size
+    w = 64
+    h = 64
+    splits = [image.crop((x, y, x + w, y + h)).histogram() for y in xrange(0, W, w) for x in xrange(0, H, h)]
+    for s in splits:
+        print s
+
+def NaiveNNIGenerator():
+    for image in imagesLoader():
+        ldpResult = list(Convolution.convolute(image, Convolution.LDP.Mask(all), (3, 3)))
+        imout = Image.new("L", image.size)
+        imout.putdata(ldpResult)
+        imsplitted = split(imout)        
+        exit()
+        yield imsplitted
+
+def main():        
+    for nni in NNInputGenerator():
+        print nni
+    # obj = list(NNInputGenerator()) 
+    # print obj
+    # json.dumps(obj, open('uNNTrain','wb'))
+
 if __name__ == '__main__':
-    test()
-    # main()    
+    # test()
+    main()    

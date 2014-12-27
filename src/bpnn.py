@@ -3,26 +3,27 @@
 # Written in Python.  See http://www.python.org/
 # Placed in the public domain.
 # Neil Schemenauer <nas@arctrix.com>
-
+import sys
+import numpy as np
 import math
 import random
 import string
-
-random.seed(0)
+import ujson
+from operator import itemgetter as ig
+from math import e
+# random.seed(1)
+# random.seed(19)
 
 # calculate a random number where:  a <= rand < b
 def rand(a, b):
     return (b-a)*random.random() + a
 
 # Make a matrix (we could use NumPy to speed this up)
-def makeMatrix(I, J, fill=0.0):
-    m = []
-    for i in range(I):
-        m.append([fill]*J)
-    return m
+def makeMatrix(i, j, fill=0.0):
+    return [[fill] * j for _ in xrange(i)]    
 
 # our sigmoid function, tanh is a little nicer than the standard 1/(1+e^-x)
-def sigmoid(x):
+def sigmoid(x):            
     return math.tanh(x)
 
 # derivative of our sigmoid function, in terms of the output (i.e. y)
@@ -37,9 +38,9 @@ class NN:
         self.no = no
 
         # activations for nodes
-        self.ai = [1.0]*self.ni
-        self.ah = [1.0]*self.nh
-        self.ao = [1.0]*self.no
+        self.ai = [1 for _ in xrange(self.ni)]
+        self.ah = [1 for _ in xrange(self.nh)]        
+        self.ao = [1 for _ in xrange(self.no)]
         
         # create weights
         self.wi = makeMatrix(self.ni, self.nh)
@@ -47,7 +48,8 @@ class NN:
         # set them to random vaules
         for i in range(self.ni):
             for j in range(self.nh):
-                self.wi[i][j] = rand(-0.2, 0.2)
+                self.wi[i][j] = rand(-.20, .20)
+                
         for j in range(self.nh):
             for k in range(self.no):
                 self.wo[j][k] = rand(-2.0, 2.0)
@@ -55,6 +57,7 @@ class NN:
         # last change in weights for momentum   
         self.ci = makeMatrix(self.ni, self.nh)
         self.co = makeMatrix(self.nh, self.no)
+        self.error = -99999
 
     def update(self, inputs):
         if len(inputs) != self.ni-1:
@@ -124,7 +127,7 @@ class NN:
 
     def test(self, patterns):
         for p in patterns:
-            print(p[0], '->', self.update(p[0]))
+            print(p[1], '->', self.update(p[0]))
 
     def weights(self):
         print('Input weights:')
@@ -135,7 +138,7 @@ class NN:
         for j in range(self.nh):
             print(self.wo[j])
 
-    def train(self, patterns, iterations=1000, N=0.5, M=0.1):
+    def train(self, patterns, iterations=100, N=0.5, M=0.1):
         # N: learning rate
         # M: momentum factor
         for i in range(iterations):
@@ -145,27 +148,34 @@ class NN:
                 targets = p[1]
                 self.update(inputs)
                 error = error + self.backPropagate(targets, N, M)
-            if i % 100 == 0:
-                print('error %-.5f' % error)
+                # if error == self.error: return
+                self.error = error          
+            print('error %s | %-.5f' % (i, error))
 
+    def accuracy(self, patterns):                        
+        guessable, correction = zip(*patterns)
+        guess = [self.update(g) for g in guessable]        
+        correctionRanks = [map(ig(0), sorted(enumerate(c), key=ig(1), reverse=True)) for c in correction]
+        guessRanks = [map(ig(0), sorted(enumerate(c), key=ig(1), reverse=True)) for c in guess]        
+        for c, g in zip(correctionRanks, guessRanks):            
+            print c[0], g
 
-def demo():
-    # Teach network XOR function
-    pat = [
-        [[0,0], [0]],
-        [[0,1], [1]],
-        [[1,0], [1]],
-        [[1,1], [0]]
-    ]
+def getDataSet():
+    dataSet = ujson.load(open('uNNTrain'))
+    exprs = ["AN", "DI", "FE", "HA", "NE", "SA", "SU"]
+    for elem in dataSet:        
+        s = sum(elem["values"])
+        values = [int((v * 10000)/float(s)) for v in elem["values"]]
+        yield [values, [1.0 if elem['class'] == expr else -1.0 for expr in exprs]]        
 
-    # create a network with two input, two hidden, and one output nodes
-    n = NN(2, 2, 1)
-    # train it with some patterns
-    n.train(pat)
-    # test it
-    n.test(pat)
+def demo(I=11, O=1, sleep=0):    
+    I = 112
+    O = 7
+    H = (I + O) / 2
+    pat = list(getDataSet())        
+    n = NN(I, H, O)    
+    n.train(pat, 10000, 0.02, 0.01)
+    print n.accuracy(pat)
 
-
-
-if __name__ == '__main__':
-    demo()
+if __name__ == '__main__':    
+    demo(*map(int, sys.argv[1:]))
