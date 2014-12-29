@@ -41,7 +41,7 @@ def maskKernel(kernel):
 def convolute(image, mask, size):        
     monadMask = monadError(mask, 255)
     for area in areaGenerator(image, size):        
-        r = monadMask(area)        
+        r = monadMask(area)
         if r < -255: yield -255
         elif r > 255: yield 255
         else: yield r
@@ -78,17 +78,47 @@ class LDP(object):
             kernels = [maskKernel([e for e in m]) for m in LDP.Kirschedge(all)]
             def aply(area):
                 memo = [e for e in area]
-                result = [kernel(memo) for kernel in kernels]                                
+                result = [kernel(memo) for kernel in kernels]
+                return result
                 sortedOut = sorted(enumerate(result), key=lambda x: x[1], reverse=True)                
                 xs = (k for k, v in sortedOut[:3])
                 return sum(2 ** x for x in xs) / 2
             return aply
 
+    def __init__(self, size):
+        w, h = size
+        self.w = w - 2
+        self.h = h - 2
+        self.pointer = 0
+        self.items = [[] for _ in xrange(8)]                
+
+    def apply8(self, area):        
+        kernel0 = LDP.Kirschedge(0)
+        masker = maskKernel(kernel0)
+        memo = list(area)
+        output0 = sum(a * m for a, m in zip(kernel0, memo))
+        currentResult = output0        
+        for i in xrange(0, 8):
+            self.items[i].append(currentResult)
+            toNeg = [5, 8, 7, 6, 3, 0, 1, 2][i - 1]
+            fromNeg = [5, 8, 7, 6, 3, 0, 1, 2][i + 2]
+            prevResult = currentResult
+            currentResult = prevResult - (8 * memo[toNeg]) + (8 * memo[fromNeg])                        
+        self.pointer += 1
+        return 0
+
+    def save(self, basename):
+        assert len(self.items[0]) == self.w * self.h
+        for i, data in enumerate(self.items):
+            fout = "%s-%s.jpg" % (basename, i)
+            image = Image.new("L", (self.w, self.h))            
+            image.putdata(data)            
+            image.save(fout)
+
     
-# if __name__ == '__main__':
-#     image = Image.open('paav.jpg')    
-#     tests = [[_ for _ in m] for m in LDP.Kirschedge(all)]    
-#     mask = LDP.Mask(all)        
-#     test = convolute(image, mask, (3, 3))
-#     field = [_ for _ in helper.group(test, 199)]
-#     helper.arr2dimage(field,'fc.jpg')
+if __name__ == '__main__':    
+    image = Image.open('img/paav.jpg')
+    ldpMonad = LDP(image.size)    
+    list(convolute(image, ldpMonad.apply8, (3,3)))
+    ldpMonad.save('img/test')
+    

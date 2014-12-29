@@ -9,10 +9,9 @@ import math
 import random
 import string
 import ujson
-from operator import itemgetter as ig
+from operator import add, sub, mul, div, itemgetter as ig
 from math import e
-# random.seed(1)
-# random.seed(19)
+import code
 
 # calculate a random number where:  a <= rand < b
 def rand(a, b):
@@ -145,7 +144,7 @@ class NN:
             error = 0.0
             for p in patterns:
                 inputs = p[0]
-                targets = p[1]
+                targets = p[1]                
                 self.update(inputs)
                 error = error + self.backPropagate(targets, N, M)
                 # if error == self.error: return
@@ -160,22 +159,71 @@ class NN:
         for c, g in zip(correctionRanks, guessRanks):            
             print c[0], g
 
+
+
+def normalized(self):
+    def g1(ins, lowerbound, diffs):
+        for elem in ins:
+            yield  map(div, (map(sub, elem, lowerbound)), diffs)
+
+    def function():
+        dataset = list(self())
+        ins = map(ig(0), dataset)
+        outs = map(ig(1), dataset)        
+        iins = zip(*ins)
+        leasts = map(min, iins)
+        mosts = map(max, iins)
+        diffs = map(float, map(sub, mosts, leasts))
+        delta = map(mul, mosts, [1/8.0] * len(mosts))
+        upperbound = map(add, mosts, delta)
+        lowerbound = map(sub, leasts, delta)
+        xranges = map(sub, upperbound, lowerbound)        
+        normalizeddata = list(g1(ins, lowerbound, xranges))        
+        return map(list, zip(normalizeddata, outs))
+    return function
+
+def xorset():
+    return [
+        [[0, 0], [0]],
+        [[1, 0], [1]],
+        [[0, 1], [1]],
+        [[1, 1], [0]]
+    ]
+
+@normalized
 def getDataSet():
-    dataSet = ujson.load(open('uNNTrain'))
+    dataset = ujson.load(open('uNNTrain'))
     exprs = ["AN", "DI", "FE", "HA", "NE", "SA", "SU"]
-    for elem in dataSet:        
+    angrySet = [elem for elem in dataset if elem["class"] == "AN"]
+    happySet = [elem for elem in dataset if elem["class"] == "HA"]
+    for elem in angrySet + happySet:
+    # for elem in dataset[:50]:
         s = sum(elem["values"])
-        values = [int((v * 10000)/float(s)) for v in elem["values"]]
-        yield [values, [1.0 if elem['class'] == expr else -1.0 for expr in exprs]]        
+        values = [int((v * 10000)/float(s)) for v in elem["values"]]        
+        yield [values, [1 if elem["class"] == "AN" else 0]]
+        # yield [values, [1.0 if elem['class'] == expr else -1.0 for expr in exprs]]
+
+def randomSet():
+    for i in xrange(100):
+        ins = [random.randint(0, 1) for i in xrange(100)]
+        outs = [random.randint(0, 1)]
+        yield [ins, outs]
+
 
 def demo(I=11, O=1, sleep=0):    
-    I = 112
-    O = 7
-    H = (I + O) / 2
-    pat = list(getDataSet())        
-    n = NN(I, H, O)    
-    n.train(pat, 10000, 0.02, 0.01)
-    print n.accuracy(pat)
+    I = 2
+    O = 1
+    H = (I + O)
+    # pat = xorset()
+    n = NN(112, 10, 1)
+    # n = NN(I, H, O)
+    pat = getDataSet()        
+    # n.train(pat, 10, 0.02, 0.01)
+    # pat = list(randomSet())
+    n.train(pat, 1000, 0.02, 0.01)
+    for args, c in pat:
+        print n.update(args), c
+    # print n.accuracy(pat)
 
 if __name__ == '__main__':    
     demo(*map(int, sys.argv[1:]))
