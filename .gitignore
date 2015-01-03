@@ -3,3 +3,5 @@ src/*.pyc
 dataset/jaffe/**
 dataset/tiff/**
 out/
+!proposal
+paper

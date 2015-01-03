@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
 import math
-import numpy as np
+# import numpy as np
 from PIL import Image
 import sys
 import code
@@ -7,7 +8,7 @@ import operator as op
 import Helper as helper
 # generator yang ngambil area 3x3 disekitar p, q
 def pick(im, xx, yy, size=(3, 3)):
-    w, h = size
+    w, h = size    
     bound = lambda b: lambda x: (- (b / 2) + x, (b + 1) / 2 + x)
     wBound = bound(w)    
     hBound = bound(h)    
@@ -79,7 +80,7 @@ class LDP(object):
             def aply(area):
                 memo = [e for e in area]
                 result = [kernel(memo) for kernel in kernels]                                
-                sortedOut = sorted(enumerate(result), key=lambda x: x[1], reverse=True)                
+                sortedOut = sorted(enumerate(result), key=lambda x: x[1], reverse=True)
                 xs = (k for k, v in sortedOut[:3])
                 return sum(2 ** x for x in xs) / 2
             return aply
@@ -92,3 +93,27 @@ class LDP(object):
 #     test = convolute(image, mask, (3, 3))
 #     field = [_ for _ in helper.group(test, 199)]
 #     helper.arr2dimage(field,'fc.jpg')
+
+class Training:
+    def __init__(self, xs):
+        self.dataset = xs
+
+    def __iter__(self):
+        return self
+
+    def setWeights(self, weights):
+        for data, weight in zip(self.dataset, weights):
+            data.weight = weight
+
+class Dataset:
+    def __init__(self, args, expected):
+        self.args = args
+        self.expected = expected    
+
+    def __repr__(self):
+        return "{(%s) => %s}" % (','.join(map(str, self.args)), self.expected)
+
+trainable = Training(map(Dataset, zip(range(10,20), range(10)), range(10)))
+trainable.setWeights(_ for _ in xrange(5, 15))
+from operator import attrgetter as ag
+print (map(ag('weight'), trainable.dataset))

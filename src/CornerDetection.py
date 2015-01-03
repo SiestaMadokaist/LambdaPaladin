@@ -7,7 +7,7 @@ def eigen(image, debug=False):
     return detect(image, debug=debug)
 
 def detect(image, threshold=100, debug=False):    
-    def applyMask(kernel):        
+    def applyMask(kernel):
         mask = Convolution.maskKernel(kernel)        
         return Convolution.convolute(image, mask, (3, 3))
 

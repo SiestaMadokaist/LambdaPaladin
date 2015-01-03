@@ -4,12 +4,12 @@
 # Placed in the public domain.
 # Neil Schemenauer <nas@arctrix.com>
 import sys
-import numpy as np
 import math
 import random
 import string
-import ujson
+import json as ujson
 from operator import itemgetter as ig
+from operator import sub
 from math import e
 # random.seed(1)
 # random.seed(19)
@@ -160,6 +160,24 @@ class NN:
         for c, g in zip(correctionRanks, guessRanks):            
             print c[0], g
 
+def normalize(func):
+	def aply():
+		from operator import itemgetter as ig
+		import code
+		from operator import sub
+		results = list(func())
+		_in = map(ig(0), results)
+		out = map(ig(1), results)
+		_in_ = zip(*_in)
+		least = map(min, _in_)
+		most = map(max, _in_)
+		distance = map(sub, most, least)
+		
+		code.interact(local=locals())
+		# return r
+	return aply
+
+@normalize
 def getDataSet():
     dataSet = ujson.load(open('uNNTrain'))
     exprs = ["AN", "DI", "FE", "HA", "NE", "SA", "SU"]
@@ -169,13 +187,15 @@ def getDataSet():
         yield [values, [1.0 if elem['class'] == expr else -1.0 for expr in exprs]]        
 
 def demo(I=11, O=1, sleep=0):    
-    I = 112
-    O = 7
-    H = (I + O) / 2
-    pat = list(getDataSet())        
-    n = NN(I, H, O)    
-    n.train(pat, 10000, 0.02, 0.01)
-    print n.accuracy(pat)
+	l = getDataSet()	
+
+    # I = 112
+    # O = 7
+    # H = (I + O) / 2
+    # pat = list(getDataSet())        
+    # n = NN(I, H, O)    
+    # n.train(pat, 10000, 0.02, 0.01)
+    # print n.accuracy(pat)
 
 if __name__ == '__main__':    
     demo(*map(int, sys.argv[1:]))

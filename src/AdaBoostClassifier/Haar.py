@@ -27,7 +27,7 @@ class SumTable(object):
         a = SumTable.picks(self.arrsum, x + w - 1, y - 1)
         b = SumTable.picks(self.arrsum, x - 1, y + h - 1)
         c = SumTable.picks(self.arrsum, x - 1, y - 1)
-        d = SumTable.picks(self.arrsum, x + w - 1, y + h -1)                        
+        d = SumTable.picks(self.arrsum, x + w - 1, y + h -1)                    
         out = d - a - b + c        
         return out    
 
@@ -82,9 +82,14 @@ class SumTable(object):
         return [getA(), getB(), getC(), getD()]
 
 def main():    
+    mySumTable = SumTable(5, 5, range(25))
+    print mySumTable[2, 2, 3, 3]
+    print 300 - 105 - 45 + 12
+    # fmt = lambda i: "%03i" % i
+    # # print mySumTable.arr
+    # for line in mySumTable.arrsum:
+    #     print '[%s]' % ', '.join(map(fmt, line))
     
-    mySumTable = SumTable(10, 10, range(100))    
-    print mySumTable.haar(0, 0, 3, 3)
 
 if __name__ == '__main__':
     main()
