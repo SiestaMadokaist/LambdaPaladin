@@ -1,9 +1,13 @@
 from PIL import Image
+import sys
 import Convolution
 import Helper as helper
 import operator as op
 import numpy as np
-def eigen(image, debug=False):
+import time
+import json
+import code
+def eigen(image, debug=False):    
     return detect(image, debug=debug)
 
 def detect(image, threshold=100, debug=False):    
@@ -21,7 +25,7 @@ def detect(image, threshold=100, debug=False):
         fields = [[0 for i in xrange(size)] for j in xrange(size)]        
         for x, y in zip(Ix, Iy):        
             fields[view(y)][view(x)] = 255        
-        helper.arr2dimage(fields, "img/hello.jpg")
+        helper.arr2dimage(fields, "img/output.jpg")
 
     
     kernelX = [(i % 3) - 1 for i in xrange(9)]    
@@ -40,6 +44,10 @@ def detect(image, threshold=100, debug=False):
         ])  
     )
     eigen =  np.linalg.eig([_ for _ in helper.group(Eigen, 2)])
+    logfile = "./img/log.json"    
+    log = map(op.methodcaller('tolist'), eigen)    
+    with open(logfile, 'ab') as sys.stdout:
+        print log    
     return eigen[0]
 
 if __name__ == '__main__':

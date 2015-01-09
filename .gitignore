@@ -1,6 +1,5 @@
 src/.geteye.py
 src/*.pyc
-dataset/jaffe/**
 dataset/tiff/**
 out/
 !proposal

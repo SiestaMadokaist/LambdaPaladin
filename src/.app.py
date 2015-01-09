@@ -8,26 +8,27 @@ app = Flask(__name__)
 
 @app.route('/<x0>/<y0>/<x1>/<y1>')
 def eigen(x0, y0, x1, y1):
-    path = 'img/face.jpg'
+    path = 'img/input.jpg'    
     image = Image.open(path).crop(map(int, (x0, y0, x1, y1)))
-    cd.detect(image, 100, True)
+    image.save("./img/middle.jpg")
+    eigen = cd.detect(image, 100, True)    
     return 'success'
 
-@app.route('/debug')
+@app.route('/')
 def debug():
-    return send_file('./debug.html')
+    return send_file('./index.html')
 
-@app.route('/face')
-def face():
-    return send_file('./img/face.jpg')
+@app.route('/input')
+def inputImage():
+    return send_file('./img/input.jpg')
 
-@app.route('/chess')
-def chess():
-    return send_file('./img/chess.bmp')
+@app.route("/middle")
+def middleImage():
+    return send_file('./img/middle.jpg')
 
-@app.route("/hello")
-def hello():
-    return send_file("./img/hello.jpg")
+@app.route('/output')
+def outputImage():
+    return send_file('./img/output.jpg')
 
 if __name__ == '__main__':    
     if len(sys.argv) < 2:

@@ -151,14 +151,26 @@ class NN:
                 self.error = error          
             print('error %s | %-.5f' % (i, error))
 
+    # def accuracy(self, patterns):                        
+    #     guessable, correction = zip(*patterns)
+    #     guess = [self.update(g) for g in guessable]        
+    #     correctionRanks = [map(ig(0), sorted(enumerate(c), key=ig(1), reverse=True)) for c in correction]
+    #     guessRanks = [map(ig(0), sorted(enumerate(c), key=ig(1), reverse=True)) for c in guess]        
+    #     for c, g in zip(correctionRanks, guessRanks):            
+    #         print c[0], g[0]
+
+
     def accuracy(self, patterns):                        
         guessable, correction = zip(*patterns)
         guess = [self.update(g) for g in guessable]        
         correctionRanks = [map(ig(0), sorted(enumerate(c), key=ig(1), reverse=True)) for c in correction]
         guessRanks = [map(ig(0), sorted(enumerate(c), key=ig(1), reverse=True)) for c in guess]        
-        for c, g in zip(correctionRanks, guessRanks):            
-            print c[0], g
-
+        confusionMatrix = [[0 for i in xrange(7)] for i in xrange(7)]
+        for c, g in zip(correctionRanks, guessRanks):
+            confusionMatrix[c[0]][g[0]] += 1
+        print sum(c[0] == g[0] for c, g in zip(correctionRanks, guessRanks)) / float(len(patterns))
+        for mat in confusionMatrix:
+            print mat
 
 
 def normalized(self):
@@ -194,14 +206,10 @@ def xorset():
 def getDataSet():
     dataset = ujson.load(open('uNNTrain'))
     exprs = ["AN", "DI", "FE", "HA", "NE", "SA", "SU"]
-    angrySet = [elem for elem in dataset if elem["class"] == "AN"]
-    happySet = [elem for elem in dataset if elem["class"] == "HA"]
-    for elem in angrySet + happySet:
-    # for elem in dataset[:50]:
+    for elem in dataset:
         s = sum(elem["values"])
         values = [int((v * 10000)/float(s)) for v in elem["values"]]        
-        yield [values, [1 if elem["class"] == "AN" else 0]]
-        # yield [values, [1.0 if elem['class'] == expr else -1.0 for expr in exprs]]
+        yield [values, [1.0 if elem['class'] == expr else -1.0 for expr in exprs]]
 
 def randomSet():
     for i in xrange(100):
@@ -210,20 +218,18 @@ def randomSet():
         yield [ins, outs]
 
 
-def demo(I=11, O=1, sleep=0):    
-    I = 2
-    O = 1
-    H = (I + O)
-    # pat = xorset()
-    n = NN(112, 10, 1)
-    # n = NN(I, H, O)
-    pat = getDataSet()        
-    # n.train(pat, 10, 0.02, 0.01)
-    # pat = list(randomSet())
-    n.train(pat, 1000, 0.02, 0.01)
-    for args, c in pat:
-        print n.update(args), c
-    # print n.accuracy(pat)
+def demo(h=10, lr=0.02, m=0.01):    
+    H = int(h)
+    learnrate = float(lr)
+    momentum = float(m)
+    n = NN(112, H, 7)    
+    pat = getDataSet()
+    random.shuffle(pat)
+    train = pat
+    validation = pat[85:]
+    n.train(train, 1000, learnrate, momentum)
+    n.accuracy(validation)
+    code.interact(local=locals())
 
 if __name__ == '__main__':    
-    demo(*map(int, sys.argv[1:]))
+    demo(*sys.argv[1:])
