@@ -92,20 +92,20 @@ class LDP(object):
         self.pointer = 0
         self.items = [[] for _ in xrange(8)]                
 
-    def apply8(self, area):        
-        kernel0 = LDP.Kirschedge(0)
-        masker = maskKernel(kernel0)
-        memo = list(area)
-        output0 = sum(a * m for a, m in zip(kernel0, memo))
-        currentResult = output0        
-        for i in xrange(0, 8):
-            self.items[i].append(currentResult)
-            toNeg = [5, 8, 7, 6, 3, 0, 1, 2][i - 1]
-            fromNeg = [5, 8, 7, 6, 3, 0, 1, 2][i + 2]
-            prevResult = currentResult
-            currentResult = prevResult - (8 * memo[toNeg]) + (8 * memo[fromNeg])                        
-        self.pointer += 1
-        return 0
+    # def apply8(self, area):        
+    #     kernel0 = LDP.Kirschedge(0)
+    #     masker = maskKernel(kernel0)
+    #     memo = list(area)
+    #     output0 = sum(a * m for a, m in zip(kernel0, memo))
+    #     currentResult = output0        
+    #     for i in xrange(0, 8):
+    #         self.items[i].append(currentResult)
+    #         toNeg = [5, 8, 7, 6, 3, 0, 1, 2][i - 1]
+    #         fromNeg = [5, 8, 7, 6, 3, 0, 1, 2][i + 2]
+    #         prevResult = currentResult
+    #         currentResult = prevResult - (8 * memo[toNeg]) + (8 * memo[fromNeg])                        
+    #     self.pointer += 1
+    #     return 0
 
     def save(self, basename):
         assert len(self.items[0]) == self.w * self.h
@@ -115,10 +115,36 @@ class LDP(object):
             image.putdata(data)            
             image.save(fout)
 
+class FastLDP:    
+    def __init__(self, streams):
+        self.streams = streams
     
+    def level(self, k):
+        tmp = sorted(enumerate(self.streams), key=op.itemgetter(1), reverse=True)        
+        return sum(2 ** elem for elem in map(op.itemgetter(0), tmp[:k]))        
+
+def FastLDPTransform(fn, size):
+    w, h = size
+    kernel0 = list(LDP.Kirschedge(0))
+    rotation = [5, 8, 7, 6, 3, 0, 1, 2, 5, 8, 7, 6, 3, 0, 1, 2]
+    def calculateAt(x, y):
+        assert 0 <= x < w, 'out of bound at x'
+        assert 0 <= y < h, 'out of bound at y'
+        values = [fn[a * w + b] for a in xrange(y - 1, y + 2) for b in xrange(x - 1, x + 2)]
+        # this line need to be corrected, x[-5] == x[-5] instead of error
+        print values
+        streams = [sum(m * v for m, v in zip(kernel0, values))]        
+        for i in xrange(7):
+            toNeg = rotation[i - 1]
+            fromNeg = rotation[i + 2]
+            prev = streams[-1]
+            streams.append(prev - (8 * values[toNeg]) + (8 * values[fromNeg]))
+        return FastLDP(streams)
+    return calculateAt
+
 if __name__ == '__main__':    
-    image = Image.open('img/paav.jpg')
-    ldpMonad = LDP(image.size)    
-    list(convolute(image, ldpMonad.apply8, (3,3)))
-    ldpMonad.save('img/test')
-    
+    image = Image.open('or4.jpg')
+    data = list(image.getdata())    
+    size = image.size
+    FLDP = FastLDPTransform(data, size)
+    print FLDP(1, 1).level(4)

@@ -45,12 +45,12 @@ class NN:
         self.wi = makeMatrix(self.ni, self.nh)
         self.wo = makeMatrix(self.nh, self.no)
         # set them to random vaules
-        for i in range(self.ni):
-            for j in range(self.nh):
+        for i in xrange(self.ni):
+            for j in xrange(self.nh):
                 self.wi[i][j] = rand(-.20, .20)
                 
-        for j in range(self.nh):
-            for k in range(self.no):
+        for j in xrange(self.nh):
+            for k in xrange(self.no):
                 self.wo[j][k] = rand(-2.0, 2.0)
 
         # last change in weights for momentum   
@@ -59,68 +59,58 @@ class NN:
         self.error = -99999
 
     def update(self, inputs):
-        if len(inputs) != self.ni-1:
-            raise ValueError('wrong number of inputs')
+        assert len(inputs) == self.ni - 1, "wrong number of inputs"        
 
         # input activations
-        for i in range(self.ni-1):
-            #self.ai[i] = sigmoid(inputs[i])
+        for i in xrange(self.ni-1):            
             self.ai[i] = inputs[i]
 
         # hidden activations
-        for j in range(self.nh):
-            sum = 0.0
-            for i in range(self.ni):
-                sum = sum + self.ai[i] * self.wi[i][j]
-            self.ah[j] = sigmoid(sum)
+        for j in xrange(self.nh):
+            accumulator = 0.0
+            for i in xrange(self.ni):
+                accumulator = accumulator + self.ai[i] * self.wi[i][j]
+            self.ah[j] = sigmoid(accumulator)
 
         # output activations
-        for k in range(self.no):
-            sum = 0.0
-            for j in range(self.nh):
-                sum = sum + self.ah[j] * self.wo[j][k]
-            self.ao[k] = sigmoid(sum)
+        for k in xrange(self.no):
+            accumulator = 0.0
+            for j in xrange(self.nh):
+                accumulator = accumulator + self.ah[j] * self.wo[j][k]
+            self.ao[k] = sigmoid(accumulator)
 
         return self.ao[:]
 
 
     def backPropagate(self, targets, N, M):
-        if len(targets) != self.no:
-            raise ValueError('wrong number of target values')
+        assert len(targets) == self.no, "wrong number of target values"        
 
-        # calculate error terms for output
-        output_deltas = [0.0] * self.no
-        for k in range(self.no):
-            error = targets[k]-self.ao[k]
-            output_deltas[k] = dsigmoid(self.ao[k]) * error
+        def outDeltaGenerator():
+            for target, activator in zip(targets, self.ao):                
+                yield dsigmoid(activator) * (target - activator)
 
-        # calculate error terms for hidden
-        hidden_deltas = [0.0] * self.nh
-        for j in range(self.nh):
-            error = 0.0
-            for k in range(self.no):
-                error = error + output_deltas[k]*self.wo[j][k]
-            hidden_deltas[j] = dsigmoid(self.ah[j]) * error
+        def hiddenDeltaGenerator():
+            for output_weights in self.wo:
+                yield sum(odelta * weight for odelta, weight in zip(output_deltas, output_weights))    
+
+        output_deltas = list(outDeltaGenerator())
+        hidden_deltas = list(hiddenDeltaGenerator())
 
         # update output weights
-        for j in range(self.nh):
-            for k in range(self.no):
-                change = output_deltas[k]*self.ah[j]
-                self.wo[j][k] = self.wo[j][k] + N*change + M*self.co[j][k]
+        for j in xrange(self.nh):
+            for k in xrange(self.no):
+                change = output_deltas[k] * self.ah[j]
+                self.wo[j][k] = self.wo[j][k] + N * change + M * self.co[j][k]
                 self.co[j][k] = change
-                #print N*change, M*self.co[j][k]
 
         # update input weights
-        for i in range(self.ni):
-            for j in range(self.nh):
-                change = hidden_deltas[j]*self.ai[i]
-                self.wi[i][j] = self.wi[i][j] + N*change + M*self.ci[i][j]
+        for i in xrange(self.ni):
+            for j in xrange(self.nh):
+                change = hidden_deltas[j] * self.ai[i]
+                self.wi[i][j] = self.wi[i][j] + N * change + M * self.ci[i][j]
                 self.ci[i][j] = change
-
-        # calculate error
-        error = 0.0
-        for k in range(len(targets)):
-            error = error + 0.5*(targets[k]-self.ao[k])**2
+        
+        error = sum(0.5 * (target - activator) ** 2 for target, activator in zip(targets, self.ao))
         return error
 
 
@@ -130,17 +120,17 @@ class NN:
 
     def weights(self):
         print('Input weights:')
-        for i in range(self.ni):
+        for i in xrange(self.ni):
             print(self.wi[i])
         print()
         print('Output weights:')
-        for j in range(self.nh):
+        for j in xrange(self.nh):
             print(self.wo[j])
 
     def train(self, patterns, iterations=100, N=0.5, M=0.1):
         # N: learning rate
         # M: momentum factor
-        for i in range(iterations):
+        for i in xrange(iterations):
             error = 0.0
             for p in patterns:
                 inputs = p[0]

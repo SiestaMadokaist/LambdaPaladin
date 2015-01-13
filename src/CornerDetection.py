@@ -44,10 +44,8 @@ def detect(image, threshold=100, debug=False):
         ])  
     )
     eigen =  np.linalg.eig([_ for _ in helper.group(Eigen, 2)])
-    logfile = "./img/log.json"    
-    log = map(op.methodcaller('tolist'), eigen)    
-    with open(logfile, 'ab') as sys.stdout:
-        print log    
+    # logfile = "./img/log.json"    
+    # log = map(op.methodcaller('tolist'), eigen)        
     return eigen[0]
 
 if __name__ == '__main__':
