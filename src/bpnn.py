@@ -207,6 +207,16 @@ def randomSet():
         outs = [random.randint(0, 1)]
         yield [ins, outs]
 
+def load():
+    nn = NN(112, 10, 7)
+    nn.wi = []
+    nn.wo = []    
+    for i, line in enumerate(open('weights.txt', 'rb')):    
+        weights = line.replace("[","").replace("]","")
+        iweights = map(float, weights.split(","))
+        func = nn.wi.append if len(iweights) == 7 else nn.wo.append
+        func(iweights)
+    return nn
 
 def demo(h=10, lr=0.02, m=0.01):    
     H = int(h)
