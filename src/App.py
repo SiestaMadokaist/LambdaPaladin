@@ -11,6 +11,9 @@ import math
 import Convolution
 from PIL import Image
 from datetime import datetime
+import itertools
+import code
+flatten = lambda args: list(itertools.chain(*args))
 @classmethod
 def loadClassifiers(cls, filepath):
     def loader():
@@ -62,10 +65,7 @@ def ranges(size, space):
 def eyeFinder(classifiers, image):
     w, h = image.size        
     arr = [d for d in image.getdata()]
-    sumTable = Ada.SumTable(w, h, arr)
-    identified = []
-    tot = 0
-    xx = 0
+    sumTable = Ada.SumTable(w, h, arr)    
     for area in ranges(image.size, (100, 48)):                
         args = sumTable.haar(*area)                
         test = helper.all(lambda c: c.apply(*args) > 0, classifiers, 2)
@@ -121,64 +121,7 @@ def process(image, classifiers, nbx, nby):
     eyeRegion = image.crop(boxLimit)
     eyeRegion.name = image.name
     return eyeRegion    
-
-class NNInput(object):        
-    Keys = [3, 5, 6, 7, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 21, 22, 24, 25, 26, 28, 33, 34, 35, 36, 37, 38, 40, 41, 42, 44, 48, 49, 50, 52, 56, 65, 66, 67, 68, 69, 70, 72, 73, 74, 76, 80, 81, 82, 84, 88, 96, 97, 98, 100, 104, 112, 255]
-    Transformer = [None] * 256
-    for i, key in enumerate(Keys):
-        Transformer[key] = i
-
-    @classmethod
-    def search(cls, key):
-        return NNInput.Transformer[key]
-
-    def __init__(self, clas):
-        self.memo = [0] * len(NNInput.Keys)
-        self.clas = clas
-
-    @property
-    def normalized(self):
-        total = sum(self.memo)
-        return [val / float(total) for val in self.memo]
-
-    def incrementAt(self, key):
-        index = NNInput.search(key)
-        self.memo[index] += 1
-
-    def setValueAt(self, key, value):
-        index = NNInput.search(key)
-        self.memo[index] = value   
-
-    def __repr__(self):
-        return "%s | %s" % (self.clas, self.memo)
-        # return json.dumps(
-        #     {
-        #     'class': self.clas,
-        #     'values': self.memo
-        #     }            
-        # )        
-
-def getNNI(array, size, cls):    
-    w, h = size
-    im = Image.new("L", (w, h))
-    x1 = (w / 2)    
-    im.putdata(array)    
-    im1 = im.crop((0, 0, x1, h))
-    im2 = im.crop((x1, 0, w, h))    
-    hist1 = im1.histogram()    
-    hist2 = im2.histogram()
-    nni1 = NNInput(cls)
-    nni2 = NNInput(cls)
-    for i, k in enumerate(hist1):        
-        if k != 0: 
-            nni1.setValueAt(i, k)    
-    for i, k in enumerate(hist2):
-        if k != 0:
-            nni2.setValueAt(i, k)
-    nni = NNInput(cls)
-    nni.memo = nni1.memo[:-1] + nni2.memo[:-1]    
-    return nni
-
+    
 def eyeRegionFinder(image, classifiers, nbx, nby):
     eyeRegion = process(image, classifiers, nbx, nby)    
     if not eyeRegion: return None    
@@ -187,46 +130,83 @@ def eyeRegionFinder(image, classifiers, nbx, nby):
         if not eyeRegion: return None
     return eyeRegion
 
-def NNInputGenerator(): 
+class NNInput:                        
+    def __init__(self, level):
+        self.level = level    
+        self.keys = [x for x in xrange(256) if self.filtr(x)]
+
+    def filtr(self, x):
+        return sum(map(int, bin(x)[2:])) == self.level
+
+    def histogram(self, xs):
+        tmpResult = [sum(1 for x in xs if x == k) for k in self.keys]
+        return map(lambda x: x / float(len(xs)), tmpResult)
+
+def cropToPQ(image, p=2, q=2):
+    ew, eh = image.size
+    w, h = ew / p, eh / q
+    ew, eh = w * p, h * q
+    x0 = range(0, ew, w)
+    x1 = map(lambda x: min(x + w, ew), x0)
+    y0 = range(0, eh, h)
+    y1 = map(lambda y: min(y + h, eh), y0)
+    return [image.crop((p, q, r, s)) for q, s in zip(y0, y1) for p, r in zip(x0, x1)]
+
+def ImageFactory(w, h):
+    def create(xs):
+        im = Image.new("L", (w, h))
+        im.putdata(xs)
+        return im 
+    return create
+
+def LDPDataGenerator(): 
     avg = [374.88853020859023, 1014.8650253216985]
-    std = [56.422630355577567, 61.952098016350945]        
+    std = [56.422630355577567, 61.952098016350945]
     nbs = map(naiveBayes, avg, std)
-    nbx, nby = nbs
+    nbx, nby = nbs      
     classifiers = [classifier for classifier in classifierLoader()]    
-    ldpMask = Convolution.LDP.Mask(all)        
+    ldpMask = Convolution.LDP.Mask(all)
+    valueSets = []
     for image in imagesLoader(): 
         foutpath = "out/%s" % image.name
         cls = image.name.split(".")[1][:2]        
-        eyeRegion = eyeRegionFinder(image, classifiers, nbx, nby)        
-        if not eyeRegion: continue        
-        ldpResult = list(Convolution.convolute(eyeRegion, ldpMask, (3, 3)))
-        nni = getNNI(ldpResult, eyeRegion.size, cls)
-        yield nni
-
-def split(image):
-    W, H = image.size
-    w = 64
-    h = 64
-    splits = [image.crop((x, y, x + w, y + h)).histogram() for y in xrange(0, W, w) for x in xrange(0, H, h)]
-    for s in splits:
-        print s
-
-def NaiveNNIGenerator():
-    for image in imagesLoader():
-        ldpResult = list(Convolution.convolute(image, Convolution.LDP.Mask(all), (3, 3)))
-        imout = Image.new("L", image.size)
-        imout.putdata(ldpResult)
-        imsplitted = split(imout)        
-        exit()
-        yield imsplitted
-
+        eyeRegion = eyeRegionFinder(image, classifiers, nbx, nby)
+        if not eyeRegion: continue
+        eyeRegion.save(foutpath)
+        fldp = Convolution.FastLDPTransform(list(eyeRegion.getdata()), eyeRegion.size)
+        w, h = eyeRegion.size
+        factory = ImageFactory(w-2, h-2)
+        almostImage = [fldp(x, y) for y in xrange(1, h-1) for x in xrange(1, w - 1)]
+        LDPResults = [map(lambda f: f(k), almostImage) for k in xrange(8)]
+        images = map(factory, LDPResults)
+        cropedImages = map(lambda i: cropToPQ(i, 6, 2), images)
+        data = [map(lambda im: list(im.getdata()), imageSet) for imageSet in cropedImages]
+        histogramsUnflatten = [map(NNInput(k).histogram, datum) for k, datum in enumerate(data)]
+        histograms = map(flatten, histogramsUnflatten)        
+        yield histograms, cls
+        
 def main():        
-    for nni in NNInputGenerator():
-        print nni
-    # obj = list(NNInputGenerator()) 
-    # print obj
-    # json.dumps(obj, open('uNNTrain','wb'))
+    for i in xrange(8):
+        try:
+            os.remove('../LDPResult/data%s.csv' % i)
+        except:
+            pass
 
-if __name__ == '__main__':
-    # test()
+    for i, (histograms, cls) in enumerate(LDPDataGenerator()):
+        for k, histogram in enumerate(histograms):                        
+            fout = open('../LDPResult/data%s.csv' % k, 'ab')
+            printed = "%s\n%s\n" % (cls, ', '.join(map(lambda fl: "%.3f" % fl, histogram)))
+            fout.write(printed)
+        print i        
+    
+if __name__ == '__main__':    
     main()    
+from math import sqrt
+def eig2(arr):
+    ix2, ixiy1, ixiy2, iy2 = arr
+    c = ix2 * iy2 - (ixiy1 * ixiy2)
+    b = -(ix2 + iy2)    
+    a = 1
+    d = sqrt(b ** 2 - 4 * a * c)
+    v = map(lambda x: x/(2.0 * a), (-b + d, -b - d))
+    return v

@@ -10,7 +10,7 @@ import random
 import string
 import ujson
 from operator import add, sub, mul, div, itemgetter as ig
-from math import e
+from math import e, sqrt
 import code
 
 # calculate a random number where:  a <= rand < b
@@ -132,22 +132,12 @@ class NN:
         # M: momentum factor
         for i in xrange(iterations):
             error = 0.0
-            for p in patterns:
-                inputs = p[0]
-                targets = p[1]                
+            for inputs, targets in patterns:                            
                 self.update(inputs)
                 error = error + self.backPropagate(targets, N, M)
                 # if error == self.error: return
                 self.error = error          
             print('error %s | %-.5f' % (i, error))
-
-    # def accuracy(self, patterns):                        
-    #     guessable, correction = zip(*patterns)
-    #     guess = [self.update(g) for g in guessable]        
-    #     correctionRanks = [map(ig(0), sorted(enumerate(c), key=ig(1), reverse=True)) for c in correction]
-    #     guessRanks = [map(ig(0), sorted(enumerate(c), key=ig(1), reverse=True)) for c in guess]        
-    #     for c, g in zip(correctionRanks, guessRanks):            
-    #         print c[0], g[0]
 
 
     def accuracy(self, patterns):                        
@@ -164,24 +154,28 @@ class NN:
 
 
 def normalized(self):
-    def g1(ins, lowerbound, diffs):
-        for elem in ins:
-            yield  map(div, (map(sub, elem, lowerbound)), diffs)
+    def divisor(a, b):
+        try: 
+            return div(a, b)
+        except:
+            return 0
+    def g1(ins, lowerbound, diffs):        
+        for elem in ins:            
+            yield map(divisor, (map(sub, elem, lowerbound)), diffs)
 
-    def function():
-        dataset = list(self())
-        ins = map(ig(0), dataset)
-        outs = map(ig(1), dataset)        
-        iins = zip(*ins)
-        leasts = map(min, iins)
-        mosts = map(max, iins)
-        diffs = map(float, map(sub, mosts, leasts))
-        delta = map(mul, mosts, [1/8.0] * len(mosts))
+    def function(n):
+        dataset = list(self(n))
+        inputs, outputs = zip(*dataset)
+        inputGrouped = zip(*inputs)        
+        leasts = map(min, inputGrouped)
+        mosts = map(max, inputGrouped)
+        diffs = map(float, map(sub, mosts, leasts))        
+        delta = map(mul, mosts, [0.125] * len(mosts))
         upperbound = map(add, mosts, delta)
         lowerbound = map(sub, leasts, delta)
-        xranges = map(sub, upperbound, lowerbound)        
-        normalizeddata = list(g1(ins, lowerbound, xranges))        
-        return map(list, zip(normalizeddata, outs))
+        xranges = map(sub, upperbound, lowerbound)
+        normalizeddata = list(g1(inputs, lowerbound, xranges))        
+        return map(list, zip(normalizeddata, outputs))
     return function
 
 def xorset():
@@ -193,13 +187,13 @@ def xorset():
     ]
 
 @normalized
-def getDataSet():
-    dataset = ujson.load(open('uNNTrain'))
+def getDataSet(n):
+    rawdata = list(line.strip() for line in open('../LDPResult/data%s.csv' % n))
+    clas = [data for i, data in enumerate(rawdata) if not i % 2]
+    inputs = [map(float, data.split(', ')) for i, data in enumerate(rawdata) if i % 2]    
     exprs = ["AN", "DI", "FE", "HA", "NE", "SA", "SU"]
-    for elem in dataset:
-        s = sum(elem["values"])
-        values = [int((v * 10000)/float(s)) for v in elem["values"]]        
-        yield [values, [1.0 if elem['class'] == expr else -1.0 for expr in exprs]]
+    outputs = [[int(e == c) for e in exprs] for c in clas]
+    return zip(inputs, outputs)    
 
 def randomSet():
     for i in xrange(100):
@@ -218,18 +212,26 @@ def load():
         func(iweights)
     return nn
 
-def demo(h=10, lr=0.02, m=0.01):    
-    H = int(h)
+def demo(h=None, lr=0.02, m=0.01):        
     learnrate = float(lr)
     momentum = float(m)
-    n = NN(112, H, 7)    
-    pat = getDataSet()
-    random.shuffle(pat)
-    train = pat
-    validation = pat[85:]
-    n.train(train, 1000, learnrate, momentum)
-    n.accuracy(validation)
-    code.interact(local=locals())
+    dataset = getDataSet(3)
+    I = len(dataset[0][0])    
+    H = int(h) if h is not None else int(sqrt(I))
+    O = len(dataset[0][1])
+    n = NN(I, H, O)  
+    train = dataset[:85]
+    validation = dataset[85:]
+    n.train(train, 1000, learnrate, momentum)    
+    code.interact(local=dict(locals(), **globals()))
+    # n = NN(112, H, 7)    
+    # pat = getDataSet()
+    # random.shuffle(pat)
+    # train = pat
+    # validation = pat[85:]
+    # n.train(train, 1000, learnrate, momentum)
+    # n.accuracy(validation)
+    # code.interact(local=locals())
 
 if __name__ == '__main__':    
     demo(*sys.argv[1:])

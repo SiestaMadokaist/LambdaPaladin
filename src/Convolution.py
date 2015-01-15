@@ -1,10 +1,11 @@
 import math
-import numpy as np
 from PIL import Image
 import sys
 import code
 import operator as op
-import Helper as helper
+import profile
+import random
+# import Helper as helper
 # generator yang ngambil area 3x3 disekitar p, q
 def pick(im, xx, yy, size=(3, 3)):
     w, h = size
@@ -50,7 +51,7 @@ class LDP(object):
     @classmethod
     def Directions(cls, i):
         idx = i % 8
-        return [5, 8, 7, 6, 3, 0, 1, 2][idx]
+        return [5, 2, 1, 0, 3, 6, 7, 8][idx]
 
     @classmethod
     def KirschGenerator(cls, direction):
@@ -78,73 +79,49 @@ class LDP(object):
             kernels = [maskKernel([e for e in m]) for m in LDP.Kirschedge(all)]
             def aply(area):
                 memo = [e for e in area]
-                result = [kernel(memo) for kernel in kernels]
-                return result
+                result = [kernel(memo) for kernel in kernels]                
                 sortedOut = sorted(enumerate(result), key=lambda x: x[1], reverse=True)                
                 xs = (k for k, v in sortedOut[:3])
                 return sum(2 ** x for x in xs) / 2
             return aply
 
-    def __init__(self, size):
-        w, h = size
-        self.w = w - 2
-        self.h = h - 2
-        self.pointer = 0
-        self.items = [[] for _ in xrange(8)]                
-
-    # def apply8(self, area):        
-    #     kernel0 = LDP.Kirschedge(0)
-    #     masker = maskKernel(kernel0)
-    #     memo = list(area)
-    #     output0 = sum(a * m for a, m in zip(kernel0, memo))
-    #     currentResult = output0        
-    #     for i in xrange(0, 8):
-    #         self.items[i].append(currentResult)
-    #         toNeg = [5, 8, 7, 6, 3, 0, 1, 2][i - 1]
-    #         fromNeg = [5, 8, 7, 6, 3, 0, 1, 2][i + 2]
-    #         prevResult = currentResult
-    #         currentResult = prevResult - (8 * memo[toNeg]) + (8 * memo[fromNeg])                        
-    #     self.pointer += 1
-    #     return 0
-
-    def save(self, basename):
-        assert len(self.items[0]) == self.w * self.h
-        for i, data in enumerate(self.items):
-            fout = "%s-%s.jpg" % (basename, i)
-            image = Image.new("L", (self.w, self.h))            
-            image.putdata(data)            
-            image.save(fout)
-
-class FastLDP:    
-    def __init__(self, streams):
-        self.streams = streams
-    
-    def level(self, k):
-        tmp = sorted(enumerate(self.streams), key=op.itemgetter(1), reverse=True)        
-        return sum(2 ** elem for elem in map(op.itemgetter(0), tmp[:k]))        
-
 def FastLDPTransform(fn, size):
     w, h = size
     kernel0 = list(LDP.Kirschedge(0))
-    rotation = [5, 8, 7, 6, 3, 0, 1, 2, 5, 8, 7, 6, 3, 0, 1, 2]
-    def calculateAt(x, y):
-        assert 0 <= x < w, 'out of bound at x'
-        assert 0 <= y < h, 'out of bound at y'
-        values = [fn[a * w + b] for a in xrange(y - 1, y + 2) for b in xrange(x - 1, x + 2)]
-        # this line need to be corrected, x[-5] == x[-5] instead of error
-        print values
+    rotation = [5, 2, 1, 0, 3, 6, 7, 8, 5, 2, 1, 0, 3, 6, 7, 8]
+    eights = range(8)
+    def calculateAt(x, y):        
+        assert 1 <= x < w-1, 'out of bound at x'
+        assert 1 <= y < h-1, 'out of bound at y'
+        values = [fn[a * w + b] for a in xrange(y - 1, y + 2) for b in xrange(x - 1, x + 2)]        
         streams = [sum(m * v for m, v in zip(kernel0, values))]        
         for i in xrange(7):
             toNeg = rotation[i - 1]
             fromNeg = rotation[i + 2]
             prev = streams[-1]
             streams.append(prev - (8 * values[toNeg]) + (8 * values[fromNeg]))
-        return FastLDP(streams)
+        tmp = sorted(eights, key = streams.__getitem__, reverse=True)        
+        def atLevel(k):                                    
+            return sum(2 ** i for i in tmp[:k])
+        return atLevel
     return calculateAt
 
+def LDPTransform(fn, size, x, y, k):
+    w, h = size    
+    values = [fn[a * w + b] for a in xrange(y - 1, y + 2) for b in xrange(x - 1, x + 2)]        
+    streams = [sum(m * v for m, v in zip(kernel, values)) for kernel in kernels]        
+    tmp = sorted(eights, key = streams.__getitem__, reverse=True)
+    return sum(2 ** i for i in tmp[:k])
+
+def testLDP():
+    fn = range(65536)
+    return [LDPTransform(fn, (256, 256), x, y, 3) for x in xrange(1, 255) for y in xrange(1, 255)]
+
+def testFLDP():
+    fn = range(65536)
+    FLDP = FastLDPTransform(fn, (256, 256))    
+    return [FLDP(x, y)(3) for x in xrange(1, 255) for y in xrange(1, 255)]
+
 if __name__ == '__main__':    
-    image = Image.open('or4.jpg')
-    data = list(image.getdata())    
-    size = image.size
-    FLDP = FastLDPTransform(data, size)
-    print FLDP(1, 1).level(4)
+    a = testFLDP()
+    # b = testLDP()    
